@@ -84,7 +84,7 @@ def main():
     st.title("🎓 Consulta de Defensas de Titulación - UTPL")
     st.markdown("Ingrese su número de cédula para conocer sus detalles de defensa.")
 
-    cedula = st.text_input("Cédula:", placeholder="Ejemplo: 0987654321")
+    cedula = st.text_input("Cédula:", placeholder="Ejemplo: 1234567890")
 
     if st.button("Consultar", type="primary"):
         if not cedula or not cedula.isdigit():
