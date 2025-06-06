@@ -12,8 +12,10 @@ from datetime import datetime
 import streamlit as st
 import os
 
+# Configuración de la página
 st.set_page_config(page_title="Consulta de Defensas", page_icon="🎓")
 
+# Cargar los datos con manejo de errores
 @st.cache_data
 def load_data():
     try:
@@ -21,29 +23,25 @@ def load_data():
         df['FECHA SIMPLE'] = pd.to_datetime(df['FECHA SIMPLE'])
         return df
     except Exception as e:
-        st.error(f"Error al cargar el archivo: {str(e)}")
+        st.error(f"Error al cargar el archivo: {e}")
         return None
 
 df = load_data()
 
-if df is not None:  # Línea 29
-    # Función indentada correctamente
-    def consultar_defensa(cedula):
-        estudiante = df[df['CEDULA'].str.strip() == cedula.strip()]
-        ...
-
-    # Resto del código (también indentado)
-    st.title("Consulta de defensas")
-    ...
-else:
-    st.error("Error: No se cargaron los datos.")
+# Función de consulta
+def consultar_defensa(cedula):
+    if df is None:
+        return None, "Error en los datos. Contacte al administrador."
+    
+    estudiante = df[df['CEDULA'].str.strip() == cedula.strip()]
+    
     if estudiante.empty:
         return None, "No se encontró ningún estudiante con esa cédula."
-
+    
     datos = estudiante.iloc[0]
     hoy = datetime.now().strftime('%Y-%m-%d')
     fecha_defensa = datos['FECHA SIMPLE'].strftime('%Y-%m-%d')
-
+    
     info = {
         'nombre': datos['APELLIDOS Y NOMBRES '],
         'opcion': datos['OPCION DE TITULACIÓN\nEX. COM./TIC/TT'],
@@ -52,7 +50,7 @@ else:
         'enlace': datos['ENLACES'],
         'hoy': fecha_defensa == hoy
     }
-
+    
     return info, None
 
 # Interfaz de usuario
@@ -63,14 +61,14 @@ cedula = st.text_input("Ingrese su número de cédula (solo números):", max_cha
 if st.button("Consultar"):
     if cedula:
         info, error = consultar_defensa(cedula)
-
+        
         if error:
             st.error(error)
         else:
             st.success("Información encontrada:")
             st.subheader(info['nombre'])
             st.write(f"**Opción de titulación:** {info['opcion']}")
-
+            
             if info['hoy']:
                 st.write(f"**Fecha de defensa:** {info['fecha']}")
                 st.write(f"**Hora:** {info['hora']}")
