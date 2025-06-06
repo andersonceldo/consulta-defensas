@@ -12,117 +12,106 @@ from datetime import datetime
 import streamlit as st
 import os
 
-# Configuración de la página
-st.set_page_config(page_title="Consulta de Defensas", page_icon="🎓")
+# Configuración de página
+st.set_page_config(page_title="Consulta de Defensas UTPL", page_icon="🎓")
 
-# Cargar los datos con manejo de errores mejorado
+# Cargar los datos desde CSV o Excel
 @st.cache_data
 def load_data():
     try:
-        # Primero intenta cargar el CSV
+        # Buscar archivo de datos
         if os.path.exists('Separador_en_Python.csv'):
             df = pd.read_csv('Separador_en_Python.csv', dtype={'CEDULA': str})
-            # Convertir la fecha si existe en los datos
-            if 'FECHA SIMPLE' in df.columns:
-                df['FECHA SIMPLE'] = pd.to_datetime(df['FECHA SIMPLE'])
-            return df
-        
-        # Si no encuentra CSV, intenta con Excel (como fallback)
         elif os.path.exists('Separador en Python.xlsx'):
-            try:
-                df = pd.read_excel('Separador en Python.xlsx', 
-                                  dtype={'CEDULA': str}, 
-                                  engine='openpyxl')
-            except:
-                df = pd.read_excel('Separador en Python.xlsx', 
-                                  dtype={'CEDULA': str}, 
-                                  engine='xlrd')
-            df['FECHA SIMPLE'] = pd.to_datetime(df['FECHA SIMPLE'])
-            return df
-        
-        else:
-            st.error("No se encontró ningún archivo de datos (CSV o Excel)")
-            return None
+            df = pd.read_excel('Separador en Python.xlsx', header=None)
             
-    except Exception as e:
-        st.error(f"Error al cargar los datos: {str(e)}")
-        st.error("Verifique que el archivo existe y tiene el formato correcto.")
-        return None
+            # Buscar fila que contiene "CEDULA"
+            for idx, row in df.iterrows():
+                if 'CEDULA' in str(row.values):
+                    headers = row
+                    data_rows = df.iloc[idx+1:]
+                    break
+            
+            # Asignar encabezados y limpiar
+            data_rows.columns = headers
+            df = data_rows.reset_index(drop=True)
 
-df = load_data()
+            # Limpiar columna CEDULA y convertir FECHA
+            df['CEDULA'] = df['CEDULA'].astype(str).str.strip()
+            if 'FECHA SIMPLE' in df.columns:
+                df['FECHA SIMPLE'] = pd.to_datetime(df['FECHA SIMPLE'], errors='coerce')
+        else:
+            return None, "Archivo no encontrado. Verifique que 'Separador en Python.xlsx' esté en la carpeta raíz."
+
+        return df, None
+
+    except Exception as e:
+        return None, f"Error al cargar los datos: {str(e)}"
 
 # Función de consulta optimizada
 def consultar_defensa(cedula):
-    if df is None:
-        return None, "Error en los datos. Contacte al administrador."
-    
+    df, error = load_data()
+    if error or df is None:
+        return None, error or "Datos no disponibles."
+
     try:
-        estudiante = df[df['CEDULA'].str.strip().str.upper() == cedula.strip().upper()]
-        
+        estudiante = df[df['CEDULA'].str.strip() == cedula.strip()]
         if estudiante.empty:
             return None, "No se encontró ningún estudiante con esa cédula."
-        
+
         datos = estudiante.iloc[0]
-        hoy = datetime.now().strftime('%Y-%m-%d')
-        fecha_defensa = datos['FECHA SIMPLE'].strftime('%Y-%m-%d')
-        
+        hoy = datetime.now().date()
+
+        fecha_defensa = datos['FECHA SIMPLE'].date() if pd.notna(datos['FECHA SIMPLE']) else None
+        fecha_str = datos['FECHA SIMPLE'].strftime('%d/%m/%Y') if fecha_defensa else 'No programado'
+
         info = {
-            'nombre': datos.get('APELLIDOS Y NOMBRES', 'No registrado'),
-            'opcion': datos.get('OPCION DE TITULACIÓN\nEX. COM./TIC/TT', 'No especificada'),
-            'fecha': datos['FECHA SIMPLE'].strftime('%d/%m/%Y'),
+            'nombre': datos.get('APELLIDOS Y NOMBRES', 'No disponible'),
+            'opcion': datos.get('OPCION DE TITULACIÓN EX. COM./TIC/TT', 'No especificada'),
+            'fecha': fecha_str,
             'hora': datos.get('HORA', 'No especificada'),
             'enlace': datos.get('ENLACES', '#'),
-            'hoy': fecha_defensa == hoy
+            'hoy': fecha_defensa == hoy if fecha_defensa else False
         }
-        
+
         return info, None
-        
+
     except Exception as e:
         return None, f"Error al procesar la consulta: {str(e)}"
 
 # Interfaz de usuario mejorada
 def main():
-    st.title("🎓 Sistema de Consulta de Defensas de Titulación")
-    
-    with st.expander("ℹ️ Instrucciones"):
-        st.write("""
-        1. Ingrese su número de cédula (solo números)
-        2. Presione el botón 'Consultar'
-        3. Verifique los datos de su defensa
-        """)
-    
-    cedula = st.text_input("Ingrese su número de cédula (solo números):", 
-                         max_chars=10,
-                         help="Ingrese su cédula sin guiones ni puntos")
-    
+    st.title("🎓 Consulta de Defensas de Titulación - UTPL")
+    st.markdown("Ingrese su número de cédula para conocer sus detalles de defensa.")
+
+    cedula = st.text_input("Cédula:", placeholder="Ejemplo: 0987654321")
+
     if st.button("Consultar", type="primary"):
-        if cedula and cedula.isdigit():
+        if not cedula or not cedula.isdigit():
+            st.warning("Por favor ingrese una cédula válida (solo números).")
+        else:
             with st.spinner("Buscando información..."):
                 info, error = consultar_defensa(cedula)
-                
+
                 if error:
                     st.error(error)
                 else:
-                    st.success("Información encontrada:")
-                    st.subheader(info['nombre'])
-                    
-                    cols = st.columns(2)
-                    cols[0].write(f"**Opción de titulación:** {info['opcion']}")
-                    cols[1].write(f"**Fecha programada:** {info['fecha']}")
+                    st.success(f"Información encontrada para: **{info['nombre']}**")
+                    st.write(f"**Opción de titulación:** {info['opcion']}")
                     
                     if info['hoy']:
                         st.balloons()
-                        st.warning("⚠️ ¡Tienes defensa hoy!")
-                        cols = st.columns(2)
-                        cols[0].write(f"**Hora:** {info['hora']}")
-                        cols[1].write(f"**Enlace:** [Acceder aquí]({info['enlace']})")
+                        st.warning("⚠️ ¡Tienes defensa HOY!")
+                        st.write(f"**Fecha:** {info['fecha']}")
+                        st.write(f"**Hora:** {info['hora']}")
+                        if info['enlace'].startswith(('http://', 'https://')): 
+                            st.markdown(f"[🔗 Unirse a la reunión]({info['enlace']})")
                     else:
-                        st.info(f"Próxima defensa programada para el {info['fecha']}")
-        else:
-            st.warning("Por favor ingrese un número de cédula válido (solo dígitos)")
+                        st.info("📅 Hoy no tienes defensa programada.")
+                        st.write(f"**Próximo evento:** {info['fecha']} - {info['hora']}")
 
     st.markdown("---")
-    st.caption("© Sistema de consulta de defensas - Universidad XYZ")
+    st.caption("© 2025 | Sistema de Consulta de Defensas | UTPL")
 
 if __name__ == "__main__":
     main()
