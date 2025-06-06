@@ -17,11 +17,11 @@ st.set_page_config(page_title="Consulta de Defensas", page_icon="🎓")
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_excel('Separador en Python.xlsx', dtype={'CEDULA': str})
+        df = pd.read_excel('Separador en Python.xlsx', dtype={'CEDULA': str}, engine='openpyxl')
         df['FECHA SIMPLE'] = pd.to_datetime(df['FECHA SIMPLE'])
         return df
     except Exception as e:
-        st.error(f"Error al cargar el archivo: {e}")
+        st.error(f"Error al cargar el archivo: {str(e)}")
         return None
 
 df = load_data()
