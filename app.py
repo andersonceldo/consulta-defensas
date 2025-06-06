@@ -26,12 +26,17 @@ def load_data():
 
 df = load_data()
 
-if df is not None:
+if df is not None:  # Línea 29
+    # Función indentada correctamente
+    def consultar_defensa(cedula):
+        estudiante = df[df['CEDULA'].str.strip() == cedula.strip()]
+        ...
 
-# Función de consulta
-def consultar_defensa(cedula):
-    estudiante = df[df['CEDULA'].str.strip() == cedula.strip()]
-
+    # Resto del código (también indentado)
+    st.title("Consulta de defensas")
+    ...
+else:
+    st.error("Error: No se cargaron los datos.")
     if estudiante.empty:
         return None, "No se encontró ningún estudiante con esa cédula."
 
