@@ -10,17 +10,23 @@ Original file is located at
 import pandas as pd
 from datetime import datetime
 import streamlit as st
+import os
 
-# Configuración de la página
 st.set_page_config(page_title="Consulta de Defensas", page_icon="🎓")
 
-# Cargar los datos (ajusta la ruta según donde lo despliegues)
 @st.cache_data
 def load_data():
-    return pd.read_excel('Separador en Python.xlsx', dtype={'CEDULA': str})
+    try:
+        df = pd.read_excel('Separador en Python.xlsx', dtype={'CEDULA': str})
+        df['FECHA SIMPLE'] = pd.to_datetime(df['FECHA SIMPLE'])
+        return df
+    except Exception as e:
+        st.error(f"Error al cargar el archivo: {e}")
+        return None
 
 df = load_data()
-df['FECHA SIMPLE'] = pd.to_datetime(df['FECHA SIMPLE'])
+
+if df is not None:
 
 # Función de consulta
 def consultar_defensa(cedula):
