@@ -19,11 +19,22 @@ st.set_page_config(page_title="Consulta de Defensas", page_icon="🎓")
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_excel('Separador en Python.xlsx', dtype={'CEDULA': str}, engine='openpyxl')
+        # Intenta primero con openpyxl
+        try:
+            df = pd.read_excel('Separador en Python.xlsx', 
+                             dtype={'CEDULA': str}, 
+                             engine='openpyxl')
+        except:
+            # Fallback a xlrd si openpyxl falla
+            df = pd.read_excel('Separador en Python.xlsx', 
+                             dtype={'CEDULA': str}, 
+                             engine='xlrd')
+            
         df['FECHA SIMPLE'] = pd.to_datetime(df['FECHA SIMPLE'])
         return df
     except Exception as e:
-        st.error(f"Error al cargar el archivo: {e}")
+        st.error(f"Error al cargar el archivo: {str(e)}")
+        st.error("Por favor verifique que el archivo 'Separador en Python.xlsx' existe y tiene el formato correcto.")
         return None
 
 df = load_data()
